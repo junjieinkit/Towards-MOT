@@ -1,6 +1,6 @@
 """Demo file for running the JDE tracker on custom video sequences for pedestrian tracking.
 
-This file is the entry point to running the tracker on custom video sequences. It loads images from the provided video sequence, uses the JDE tracker for inference and outputs the video with bounding boxes indicating pedestrians. The bounding boxes also have associated ids (shown in different colours) to keep track of the movement of each individual. 
+This file is the entry point to running the tracker on custom video sequences. It loads images from the provided video sequence, uses the JDE tracker for inference and outputs the video with bounding boxes indicating pedestrians. The bounding boxes also have associated ids (shown in different colours) to keep track of the movement of each individual.
 
 Examples:
         $ python demo.py --input-video path/to/your/input/video --weights path/to/model/weights --output-root path/to/output/root
@@ -17,7 +17,7 @@ Attributes:
     min-box-area (float): Filter out boxes smaller than this area from detections. default=200
     track-buffer (int): Size of the tracking buffer. default=30
     output-format (str): Expected output format, can be video, or text. default='video'
-    
+
 
 Todo:
     * Add compatibility for non-GPU machines (would run slow)
@@ -51,7 +51,7 @@ def track(opt):
     logger.info('Starting tracking...')
     dataloader = datasets.LoadVideo(opt.input_video, opt.img_size)
     result_filename = os.path.join(result_root, 'results.txt')
-    frame_rate = dataloader.frame_rate 
+    frame_rate = dataloader.frame_rate
 
     frame_dir = None if opt.output_format=='text' else osp.join(result_root, 'frame')
     try:
@@ -65,17 +65,17 @@ def track(opt):
         cmd_str = 'ffmpeg -f image2 -i {}/%05d.jpg -c:v copy {}'.format(osp.join(result_root, 'frame'), output_video_path)
         os.system(cmd_str)
 
-        
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog='demo.py')
-    parser.add_argument('--cfg', type=str, default='cfg/yolov3_1088x608.cfg', help='cfg file path')
-    parser.add_argument('--weights', type=str, default='weights/latest.pt', help='path to weights file')
+    parser.add_argument('--cfg', type=str, default='cfg/yolov3_576x320.cfg', help='cfg file path')
+    parser.add_argument('--weights', type=str, default='weight/jde_576x320_uncertainty.pt', help='path to weights file')
     parser.add_argument('--iou-thres', type=float, default=0.5, help='iou threshold required to qualify as detected')
     parser.add_argument('--conf-thres', type=float, default=0.5, help='object confidence threshold')
     parser.add_argument('--nms-thres', type=float, default=0.4, help='iou threshold for non-maximum suppression')
     parser.add_argument('--min-box-area', type=float, default=200, help='filter out tiny boxes')
     parser.add_argument('--track-buffer', type=int, default=30, help='tracking buffer')
-    parser.add_argument('--input-video', type=str, help='path to the input video')
+    parser.add_argument('--input-video', type=str, default='/home/jwei/Downloads/MOT17-09-SDP-raw.MP4', help='path to the input video')
     parser.add_argument('--output-format', type=str, default='video', choices=['video', 'text'], help='Expected output format. Video or text.')
     parser.add_argument('--output-root', type=str, default='results', help='expected output root path')
     opt = parser.parse_args()

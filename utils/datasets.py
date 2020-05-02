@@ -7,8 +7,10 @@ import time
 from collections import OrderedDict
 
 import cv2
+cv2.setNumThreads(0)
 import numpy as np
 import torch
+import ipdb
 
 from torch.utils.data import Dataset
 from utils.utils import xyxy2xywh
@@ -53,9 +55,9 @@ class LoadImages:  # for inference
 
         # cv2.imwrite(img_path + '.letterbox.jpg', 255 * img.transpose((1, 2, 0))[:, :, ::-1])  # save letterbox image
         return img_path, img, img0
-    
+
     def __getitem__(self, idx):
-        idx = idx % self.nF 
+        idx = idx % self.nF
         img_path = self.files[idx]
 
         # Read image
@@ -80,8 +82,8 @@ class LoadVideo:  # for inference
     def __init__(self, path, img_size=(1088, 608)):
         if not os.path.isfile(path):
             raise FileExistsError
-        
-        self.cap = cv2.VideoCapture(path)        
+
+        self.cap = cv2.VideoCapture(path)
         self.frame_rate = int(round(self.cap.get(cv2.CAP_PROP_FPS)))
         self.vw = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.vh = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -122,7 +124,7 @@ class LoadVideo:  # for inference
 
         # cv2.imwrite(img_path + '.letterbox.jpg', 255 * img.transpose((1, 2, 0))[:, :, ::-1])  # save letterbox image
         return self.count, img, img0
-    
+
     def __len__(self):
         return self.vn  # number of files
 
@@ -197,13 +199,13 @@ class LoadImagesAndLabels:  # for training
         if self.augment:
             img, labels, M = random_affine(img, labels, degrees=(-5, 5), translate=(0.10, 0.10), scale=(0.50, 1.20))
 
-    
+
         plotFlag = False
         if plotFlag:
             import matplotlib
             matplotlib.use('Agg')
             import matplotlib.pyplot as plt
-            plt.figure(figsize=(50, 50)) 
+            plt.figure(figsize=(50, 50))
             plt.imshow(img[:, :, ::-1])
             plt.plot(labels[:, [1, 3, 3, 1, 1]].T, labels[:, [2, 2, 4, 4, 2]].T, '.-')
             plt.axis('off')
@@ -225,7 +227,7 @@ class LoadImagesAndLabels:  # for training
                 img = np.fliplr(img)
                 if nL > 0:
                     labels[:, 2] = 1 - labels[:, 2]
-       
+
         img = np.ascontiguousarray(img[ :, :, ::-1]) # BGR to RGB
         if self.transforms is not None:
             img = self.transforms(img)
@@ -236,7 +238,7 @@ class LoadImagesAndLabels:  # for training
         return self.nF  # number of batches
 
 
-def letterbox(img, height=608, width=1088, color=(127.5, 127.5, 127.5)):  # resize a rectangular image to a padded rectangular 
+def letterbox(img, height=608, width=1088, color=(127.5, 127.5, 127.5)):  # resize a rectangular image to a padded rectangular
     shape = img.shape[:2]  # shape = [height, width]
     ratio = min(float(height)/shape[0], float(width)/shape[1])
     new_shape = (round(shape[1] * ratio), round(shape[0] * ratio)) # new_shape = [width, height]
@@ -343,7 +345,7 @@ def collate_fn(batch):
 
 class JointDataset(LoadImagesAndLabels):  # for training
     def __init__(self, root, paths, img_size=(1088,608), augment=False, transforms=None):
-        
+
         dataset_names = paths.keys()
         self.img_files = OrderedDict()
         self.label_files = OrderedDict()
@@ -352,11 +354,11 @@ class JointDataset(LoadImagesAndLabels):  # for training
         for ds, path in paths.items():
             with open(path, 'r') as file:
                 self.img_files[ds] = file.readlines()
-                self.img_files[ds] = [osp.join(root, x.strip()) for x in self.img_files[ds]]
+                # self.img_files[ds] = [osp.join(root,x.strip()) for x in self.img_files[ds]]
+                self.img_files[ds] = [x.strip() for x in self.img_files[ds]]
                 self.img_files[ds] = list(filter(lambda x: len(x) > 0, self.img_files[ds]))
 
-            self.label_files[ds] = [x.replace('images', 'labels_with_ids').replace('.png', '.txt').replace('.jpg', '.txt')
-                                for x in self.img_files[ds]]
+            self.label_files[ds] = [x.replace('images', 'labels_with_ids').replace('.png', '.txt').replace('.jpg', '.txt') for x in self.img_files[ds]]
 
         for ds, label_paths in self.label_files.items():
             max_index = -1
@@ -369,14 +371,15 @@ class JointDataset(LoadImagesAndLabels):  # for training
                 else:
                     img_max = np.max(lb[:,1])
                 if img_max >max_index:
-                    max_index = img_max 
-            self.tid_num[ds] = max_index + 1
-        
+                    max_index = img_max
+            self.tid_num[ds] = max_index + 1 # the same car in different frames of one video should have the same ID.
+            # If the same car appears in two different videos, it should be assigned with the same ID as well.
+
         last_index = 0
         for i, (k, v) in enumerate(self.tid_num.items()):
             self.tid_start_index[k] = last_index
             last_index += v
-        
+
         self.nID = int(last_index+1)
         self.nds = [len(x) for x in self.img_files.values()]
         self.cds = [sum(self.nds[:i]) for i in range(len(self.nds))]
@@ -385,7 +388,7 @@ class JointDataset(LoadImagesAndLabels):  # for training
         self.height = img_size[1]
         self.augment = augment
         self.transforms = transforms
-        
+
         print('='*80)
         print('dataset summary')
         print(self.tid_num)
@@ -393,24 +396,24 @@ class JointDataset(LoadImagesAndLabels):  # for training
         print('start index')
         print(self.tid_start_index)
         print('='*80)
-        
+
 
     def __getitem__(self, files_index):
         """
         Iterator function for train dataset
         """
         for i, c in enumerate(self.cds):
-            if files_index >= c: 
+            if files_index >= c:
                 ds = list(self.label_files.keys())[i]
                 start_index = c
         img_path = self.img_files[ds][files_index - start_index]
         label_path = self.label_files[ds][files_index - start_index]
-        
-        imgs, labels, img_path, (h, w) = self.get_data(img_path, label_path) 
+
+        imgs, labels, img_path, (h, w) = self.get_data(img_path, label_path)
         for i, _ in enumerate(labels):
             if labels[i,1] > -1:
                 labels[i,1] += self.tid_start_index[ds]
-        
-        return imgs, labels, img_path, (h, w) 
+
+        return imgs, labels, img_path, (h, w)
 
 

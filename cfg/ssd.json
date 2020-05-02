@@ -1,0 +1,36 @@
+{
+    "root":"/home/jwei/PythonProjects/Towards-Realtime-MOT/",
+    "train":
+    {
+        "bookstore":"./data1/bookstore.train",
+        "coupa":"./data1/coupa.train",
+        "deathCircle":"./data1/deathCircle.train",
+        "gates":"./data1/gates.train",
+        "hyang":"./data1/hyang.train",
+        "little":"./data1/little.train",
+        "nexus":"./data1/nexus.train",
+        "quad":"./data1/quad.train"
+    },
+    "test_emb":
+    {
+        "bookstore":"./data1/bookstore.val",
+        "coupa":"./data1/coupa.val",
+        "deathCircle":"./data1/deathCircle.val",
+        "gates":"./data1/gates.val",
+        "hyang":"./data1/hyang.val",
+        "little":"./data1/little.val",
+        "nexus":"./data1/nexus.val",
+        "quad":"./data1/quad.val"
+    },
+    "test":
+    {
+        "bookstore":"./data1/bookstore.test",
+        "coupa":"./data1/coupa.test",
+        "deathCircle":"./data1/deathCircle.test",
+        "gates":"./data1/gates.test",
+        "hyang":"./data1/hyang.test",
+        "little":"./data1/little.test",
+        "nexus":"./data1/nexus.test",
+        "quad":"./data1/quad.test"
+    }
+}

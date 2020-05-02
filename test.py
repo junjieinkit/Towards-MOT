@@ -2,7 +2,7 @@ import argparse
 import json
 import time
 from pathlib import Path
-
+import ipdb
 from sklearn import metrics
 from scipy import interpolate
 import torch.nn.functional as F
@@ -17,7 +17,7 @@ def test(
         weights,
         batch_size=16,
         iou_thres=0.5,
-        conf_thres=0.3,
+        conf_thres=0.2,  # changed， 原来是0.3
         nms_thres=0.45,
         print_interval=40,
 ):
@@ -48,8 +48,8 @@ def test(
     # Get dataloader
     transforms = T.Compose([T.ToTensor()])
     dataset = JointDataset(dataset_root, test_path, img_size, augment=False, transforms=transforms)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, 
-                                             num_workers=8, drop_last=False, collate_fn=collate_fn) 
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False,
+                                             num_workers=8, drop_last=False, collate_fn=collate_fn)
 
     mean_mAP, mean_R, mean_P, seen = 0.0, 0.0, 0.0, 0
     print('%11s' * 5 % ('Image', 'Total', 'P', 'R', 'mAP'))
@@ -90,7 +90,7 @@ def test(
                 target_cls = labels[:, 0]
 
                 # Extract target boxes as (x1, y1, x2, y2)
-                target_boxes = xywh2xyxy(labels[:, 2:6]) 
+                target_boxes = xywh2xyxy(labels[:, 2:6])
                 target_boxes[:, 0] *= img_size[0]
                 target_boxes[:, 2] *= img_size[0]
                 target_boxes[:, 1] *= img_size[1]
@@ -179,16 +179,18 @@ def test_emb(
     # Get dataloader
     transforms = T.Compose([T.ToTensor()])
     dataset = JointDataset(dataset_root, test_paths, img_size, augment=False, transforms=transforms)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False, 
-                                             num_workers=8, drop_last=False, collate_fn=collate_fn) 
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False,
+                                             num_workers=8, drop_last=False, collate_fn=collate_fn)
     embedding, id_labels = [], []
     print('Extracting pedestrain features...')
     for batch_i, (imgs, targets, paths, shapes, targets_len) in enumerate(dataloader):
         t = time.time()
         output = model(imgs.cuda(), targets.cuda(), targets_len.cuda()).squeeze()
-
         for out in output:
-            feat, label = out[:-1], out[-1].long()
+            try:
+                feat, label = out[:-1], out[-1].long()
+            except IndexError:
+                ipdb.set_trace()
             if label != -1:
                 embedding.append(feat)
                 id_labels.append(label)
@@ -208,7 +210,7 @@ def test_emb(
     embedding = F.normalize(embedding, dim=1)
     pdist = torch.mm(embedding, embedding.t()).cpu().numpy()
     gt = id_labels.expand(n,n).eq(id_labels.expand(n,n).t()).numpy()
-    
+
     up_triangle = np.where(np.triu(pdist)- np.eye(n)*pdist !=0)
     pdist = pdist[up_triangle]
     gt = gt[up_triangle]
